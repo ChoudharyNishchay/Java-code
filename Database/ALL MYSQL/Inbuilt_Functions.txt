@@ -1,0 +1,279 @@
+-- Calculations
+
+select ename,sal, (sal+ifnull(comm,0))*12 from emp;
+-- complex calculation
+  -- sum, max, min, count, avg : Group functions
+-- Single row functions
+  -- Return one result for each row provided
+  select lower(ename),ename from emp; -- converted string into lower
+  
+  STRING FUNCTION
+  NUMERIC
+  DATE
+  CONDITIONAL FUNCTION
+
+
+mysql> SELECT 1 + '1';
++---------+
+| 1 + '1' |
++---------+
+|       2 |
++---------+
+1 row in set (0.00 sec)
+
+mysql> SELECT concat(2,'ABC');
++-----------------+
+| concat(2,'ABC') |
++-----------------+
+| 2ABC            |
++-----------------+
+
+
+Conditional / Flow Control Functions
+-------------------------------------------
+
+select ename,deptno,1000 Bonus from emp;
+
+SELECT 
+    ename,
+    deptno,
+    CASE
+        WHEN deptno = 10 THEN 1000
+        WHEN deptno = 20 THEN 1500
+        -- WHEN deptno = 30 THEN 1800
+        -- WHEN deptno=30 AND job='SALESMAN' THEN 1600
+        -- WHEN deptno=30 AND job='CLERK' THEN 1700
+        ELSE 2000
+    END Bonus
+FROM
+    emp;
+
+SELECT 
+    ename,
+    deptno,
+    CASE deptno
+        WHEN 10 THEN 1000
+        WHEN 20 THEN 1500
+        -- WHEN deptno = 30 THEN 1800
+        ELSE 2000
+    END Bonus
+FROM
+    emp;
+    
+SELECT empno, IF(sal < 2000,'Under Paid','Over Paid'),sal
+from emp;
+
+1. CASE
+	CASE value WHEN compare_value THEN result [WHEN compare_value THEN result ...] [ELSE result] END
+	CASE WHEN condition THEN result [WHEN condition THEN result ...] [ELSE result] END
+2. IF
+	IF(condition,result1,result2)
+	
+3. IFNULL
+
+4. NULLIF
+	NULLIF(expr1,expr2)
+	
+	
+Numeric Functions
+----------------------------------------
+-- Works on numeric values
+
+SELECT ename, ABS(sal - 1700) -- return absolute value
+from emp;
+
+SELECT MOD(10,2); -- remainder is return by mod function
+
+SELECT ROUND(123.564,0),ROUND(123.564,2),ROUND(123.564,1);
+SELECT ROUND(123.564,-1),ROUND(128.564,-1);
+SELECT ROUND(123.564,-2),ROUND(178.564,-2);
+SELECT ROUND(123.564,-3),ROUND(578.564,-3);
+
+SELECT TRUNCATE(123.564,0),TRUNCATE(123.564,2),TRUNCATE(123.564,1);
+SELECT TRUNCATE(123.564,-1),TRUNCATE(128.564,-1);
+SELECT TRUNCATE(123.564,-2),TRUNCATE(178.564,-2);
+SELECT TRUNCATE(123.564,-3),TRUNCATE(578.564,-3);
+
+select SIGN(12);
+select floor(123.23),ceil(123.23);
+
+1. ABS
+2. MOD
+3. FLOOR
+4. CEIL
+5. ROUND
+6. TRUNCATE
+7. SIGN
+
+Date Time Functions
+------------------------------------------
+
+SELECT sysdate(); -- server date time
+SELECT now(); -- server date time
+
+select sysdate(),sleep(10),sysdate(); -- fresh date and time from server on each call in query
+select now(),sleep(10),now(); 
+
+select curdate(),curtime();
+
+1. DATE_ADD
+     select date_add(sysdate(), INTERVAL 2 YEAR),date_add(sysdate(), INTERVAL '20.200' SECOND_MICROSECOND);
+	 
+	 Available interval : MICROSECOND,SECOND,MINUTE,HOUR,DAY,WEEK,MONTH,QUARTER,YEAR,
+              
+Interval	        Expected Format
+-----------------------------------------------------
+SECOND_MICROSECOND	'SECONDS.MICROSECONDS'
+MINUTE_MICROSECOND	'MINUTES:SECONDS.MICROSECONDS'
+MINUTE_SECOND	    'MINUTES:SECONDS'
+HOUR_MICROSECOND	'HOURS:MINUTES:SECONDS.MICROSECONDS'
+HOUR_SECOND	        'HOURS:MINUTES:SECONDS'
+HOUR_MINUTE	        'HOURS:MINUTES'
+DAY_MICROSECOND	    'DAYS HOURS:MINUTES:SECONDS.MICROSECONDS'
+DAY_SECOND	        'DAYS HOURS:MINUTES:SECONDS'
+DAY_MINUTE	        'DAYS HOURS:MINUTES'
+DAY_HOUR	        'DAYS HOURS'
+YEAR_MONTH	        'YEARS-MONTHS'
+
+     eg: select date_add(sysdate(),interval '3 00:00:00.000003' day_microsecond);
+	 
+2. TIMESTAMPADD
+
+	 select TIMESTAMPADD(MICROSECOND,3,sysdate());
+
+     Interval : MICROSECOND, SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, QUARTER, or YEAR
+	 
+3. ADDTIME
+
+	select addtime(sysdate(),'02:00:00.000003');
+	
+	
+4. CURDATE / CURRENT_DATE
+5. CURTIME(n) / CURRENT_TIME(n)
+      SELECT curtime(),curtime(3),curtime(6);
+6. CURRENT_TIMESTAMP(n)
+
+7. DATEDIFF : Difference in number of days
+		select DATEDIFF('2020-02-10','2020-02-8'), ABS(DATEDIFF('2020-02-8','2020-02-10'));
+8. PERIOD_DIFF(YYYYMM,YYYYMM) -- number of months gap between proided date value
+9. Extracting Date elements
+
+      select year(hiredate),hiredate,year(sysdate()) - year(hiredate) from emp;
+
+	select current_timestamp(6),microsecond(current_timestamp(6)),second(current_timestamp(6));
+	
+	MICROSECOND
+	SECOND
+	MINUTE
+	HOUR
+	DAY
+	MONTH
+	YEAR
+	select QUARTER(sysdate());
+	WEEK
+	select WEEKDAY (sysdate());
+	WEEKOFYEAR
+	
+	
+10. DATE_FORMAT, STR_TO_DATE
+
+select 'YYYY-MM-DD'
+
+select STR_TO_DATE('Januray-08-2020','%M-%d-%Y'); -- to help database understand the date value
+
+select sysdate(),DATE_FORMAT(sysdate(),'%b, %d'); 
+
+
+Spec  : Description
+--------------------------------------------------------------------------
+%a    : Abbreviated weekday name (Sun..Sat)
+%b    : Abbreviated month name (Jan..Dec)
+%c    : Month, numeric (0..12)
+%D    : Day of the month with English suffix (0th, 1st, 2nd, 3rd, …)
+%d    : Day of the month, numeric (00..31)
+%e    : Day of the month, numeric (0..31)
+%f    : Microseconds (000000..999999)
+%H    : Hour (00..23)
+%h    : Hour (01..12)
+%I    : Hour (01..12)
+%i    : Minutes, numeric (00..59)
+%j    : Day of year (001..366)
+%k    : Hour (0..23)
+%l    : Hour (1..12)
+%M    : Month name (January..December)
+%m    : Month, numeric (00..12)
+%p    : AM or PM
+%r    : Time, 12-hour (hh:mm:ss followed by AM or PM)
+%S    : Seconds (00..59)
+%s    : Seconds (00..59)
+%T    : Time, 24-hour (hh:mm:ss)
+%U    : Week (00..53), where Sunday is the first day of the week; WEEK() mode 0
+%u    : Week (00..53), where Monday is the first day of the week; WEEK() mode 1
+%V    : Week (01..53), where Sunday is the first day of the week; WEEK() mode 2; used with %X
+%v    : Week (01..53), where Monday is the first day of the week; WEEK() mode 3; used with %x
+%W    : Weekday name (Sunday..Saturday)
+%w    : Day of the week (0=Sunday..6=Saturday)
+%X    : Year for the week where Sunday is the first day of the week, numeric, four digits; used with %V
+%x    : Year for the week, where Monday is the first day of the week, numeric, four digits; used with %v
+%Y    : Year, numeric, four digits
+%y    : Year, numeric (two digits)
+%%    : A literal % character
+
+
+For complete list of date functions please refer
+
+https://dev.mysql.com/doc/refman/8.0/en/date-and-time-functions.html
+
+STRING Functions
+-------------------------
+ASCII : Encoding scheme
+
+select ASCII(' ');
+
+Exchange data : Encoding scheme : A : 65
+
+1. ASCII
+2. CHAR
+3. LENGTH / CHAR_LENGTH
+      select LENGtH('Smith'),char_length('Smith');
+4. CONCAT, CONCAT_WS(sep,str1,str2)
+         select concat_ws(';','Smith','Allen','Jones'),CONCAT('Smith','Allen','Jones','ABC','XYZ');
+5. FIND_IN_SET(str,strlist) 
+	eg: SELECT FIND_IN_SET('b','a,b,c,d');
+6. INSERT(Targetstr,pos,len,newstr)
+       select insert('AllenJones',6,0,' ');
+7. INSTR(Targetstr,searchstr) or LOCATE(searchstr,Targetstr,pos)
+       select instr('Scott','t'),locate('t','Scott',5);
+       
+       select *
+       from emp 
+       where instr(ename,'A') > 0;
+       
+       select *
+       from emp where ename like '%A%';
+       
+       
+8. LOWER / LCASE / UPPER / UCASE
+     select lower('ABC'),upper('abcD');
+     
+     select *
+     from emp
+     where ename='smith'; -- case insensitive
+     
+
+9. LPAD(str,len,padstr) / RPAD / LTRIM / RTRIM / TRIM
+	SELECT TRIM('  ba r   '),LENGTH(TRIM('  ba r   ')); -- leading or trailing space are removed
+	SELECT TRIM(LEADING 'x' FROM 'xxxbarxxx');
+	SELECT TRIM(BOTH 'x' FROM 'xxxbarxxx');
+	SELECT TRIM(TRAILING 'xyz' FROM 'barxxyz');
+    
+    SELECT LPAD(1000.00,20,'-');
+    
+10. SOUNDS LIKE
+	select * from emp where ename sounds like 'Skot';
+    
+Refer to following for complete list of string functions
+
+https://dev.mysql.com/doc/refman/8.0/en/string-functions.html
+
+

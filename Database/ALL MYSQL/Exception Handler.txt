@@ -1,0 +1,210 @@
+Exception Handling
+------------------------
+
+Exception?
+-- Run time error
+   -- pk violation  : during insert
+   -- fk violation : delete from dept
+   
+Propogation of Exceptions?
+
+CREATE Procedure p1
+BEGIN
+   -- code 1 -- Exception arise at this line. Program will stop execution
+             -- If programmer believe they need to continue the program then we need exception handling
+   -- code 2
+   call p2();
+   -- code 3
+END; 
+
+Error Design:
+   ERROR 1062 (23000): Duplicate entry '10' for key 'dept.PRIMARY'
+   ERROR 1146 (42S02): Table 'scott.xyz' doesnt exist
+      MySQL Error Code : 1062 and 1146. Unique number assigned to each type of error
+      SQLSTATE :  23000 and 42S02. It is an ANSI (American National Standard Institute. SQL Command standardization)
+                                    error code
+
+     To trap Primary key error we can use either statements:
+     
+	  DECLARE CONTINUE HANDLER FOR 1062 BEGIN END;               -- MySQL Specific
+      DECLARE CONTINUE HANDLER FOR SQLSTATE '23000' BEGIN END;   -- Standard ANSI
+
+Exception handler / Catch Block / condition handler : It defines the actions that the stored program is to take
+ when a specified event—such as a warning or an error—occurs.
+ 
+Syntax to declare the handler:
+
+DECLARE {CONTINUE | EXIT} HANDLER
+    FOR {SQLSTATE sqlstate_code| MySQL error code| condition_name}
+    handler_action
+	
+The Declaration has three main clauses
+	• Handler type (CONTINUE, EXIT)
+		EXIT : When an EXIT handler fires, the currently executing block is terminated.
+		CONTINUE : Execution continues with the statement following the one that caused the error to occur.
+	• Handler condition (SQLSTATE, MySQL error code, named condition)
+		MySQL error code : Error number which is associated with each error
+		SQLSTATE :  An ANSI-standard SQLSTATE code. They will have the same value regardless of the underlying database
+			
+			eg: 
+			mysql> INSERT INTO dept(deptno,dname,loc)
+				-> VALUES(10,'HR','PUNE');
+			ERROR 1062 (23000): Duplicate entry '10' for key 'dept.PRIMARY'
+			
+			In above error regarding to primary key
+			   MySQL Error Code is : 1062
+			   SQLSTATE is : 23000
+			   
+		Condition_name : Used to trap exception with user defined or inbuilt names. 
+		       eg: SQLEXCEPTION, SQLWARNING, and NOT FOUND.
+			   
+	• Hander actions
+	
+	
+Note : 
+Handler Examples
+---------------------
+Here are some examples of handler declarations:
+
+• If any error condition arises (other than a NOT FOUND), continue execution after
+setting l_error=1:
+
+		DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+		SET l_error=1;
+
+• If any error condition arises (other than a NOT FOUND), exit the current block or
+stored program after issuing a ROLLBACK statement and issuing an error message:
+
+		DECLARE EXIT HANDLER FOR SQLEXCEPTION
+		BEGIN
+		 ROLLBACK;
+		 SELECT 'Error occurred – terminating';
+		END;
+
+• If MySQL error 1062 (duplicate key value) is encountered, continue execution
+after executing the SELECT statement (which generates a message for the calling
+program):
+		DECLARE CONTINUE HANDLER FOR 1062
+		 SELECT 'Duplicate key in index';
+
+• If SQLSTATE 23000 (duplicate key value) is encountered, continue execution after
+executing the SELECT statement (which generates a message for the calling
+program):
+		DECLARE CONTINUE HANDLER FOR SQLSTATE '23000'
+		 SELECT 'Duplicate key in index';
+
+• When a cursor fetch or SQL retrieves no values, continue execution after setting
+		l_done=1:
+		DECLARE CONTINUE HANDLER FOR NOT FOUND
+		 SET l_done=1;
+
+• Same as the previous example, except specified using a SQLSTATE variable rather
+than a named condition:
+		DECLARE CONTINUE HANDLER FOR SQLSTATE '02000'
+		 SET l_done=1;
+
+• Same as the previous two examples, except specified using a MySQL error code
+variable rather than a named condition or SQLSTATE variable:
+		DECLARE CONTINUE HANDLER FOR 1329
+		 SET l_done=1;
+		 
+		 
+Handler Precedence
+--------------------
+BEGIN
+	DECLARE EXIT HANDLER FOR 1062 SELECT 'MySQL error 1062 encountered'; -- Handler with MySQL Error code will get the priority
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION SELECT 'SQLException encountered'; -- last priority
+	DECLARE EXIT HANDLER FOR SQLSTATE '23000' SELECT 'SQLSTATE 23000';  -- 2nd priority
+	
+Note : the most specific handler will be prioritize and executed. Rest are ignored.
+
+   eg: DECLARE EXIT HANDLER FOR 1062 SELECT 'MySQL error 1062 encountered';
+   Will get the priority
+   
+Assigning Names of Exceptions
+------------------------------------
+
+Developer can assign names of common exceptions for better code readability.
+
+Syntax to associate a name to an exception is as follows
+
+DECLARE condition_name CONDITION FOR {SQLSTATE sqlstate_code | MySQL_error_code};
+
+eg:
+
+  DECLARE duplicate_record CONDITION FOR SQLSTATE '23000';
+  
+  OR
+  
+  DECLARE duplicate_record CONDITION FOR 1062;
+  
+
+Demo
+--------
+
+delimiter #
+create procedure del_dept(p_deptno INT)
+begin
+	DECLARE child_found CONDITION FOR 1451;
+    BEGIN
+       DECLARE continue HANDLER for child_found SELECT 'Found Child records of emp';
+       DELETE FROM emp WHERE deptno=p_deptno;
+    END;
+    
+    BEGIN
+       DECLARE continue HANDLER for child_found SELECT 'Found Child records of dept';
+       DELETE FROM dept WHERE deptno=p_deptno;
+    END;
+end#
+
+
+Finding details of exception during generic exception handling
+--------------------------------------------------------------------
+
+We may have implemented generic exception handling using following code
+
+DECLARE continue HANDLER FOR sqlexception;
+
+However to know what was the Mysql Error Code or Error Message we need extra code effort which is as following
+
+delimiter #
+DROP PROCEDURE p_diag_demo#
+CREATE PROCEDURE p_diag_demo(p_deptno INT,p_dname VARCHAR(20),p_loc VARCHAR(20))
+BEGIN
+	DECLARE err_code INT;
+	DECLARE err_msg VARCHAR(2000);
+	DECLARE raised_error INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+	BEGIN
+	  -- Exception handler block
+	  GET DIAGNOSTICS CONDITION 1 err_code = MYSQL_ERRNO, err_msg = MESSAGE_TEXT;
+	  
+	  SELECT raised_error,err_code,err_msg;
+	END;
+	
+	INSERT INTO dept(deptno,dname,loc)
+	VALUES(p_deptno,p_dname,p_loc);
+
+END#
+
+call p_diag_demo(30,'SALES','PUNE');
+
+In this program the statement "GET DIAGNOSTICS" will try to interact with the memory area which is maintaining the
+information regarding raised exception. In our code we are using this statement to fetch the information like
+-- Exception category (raised_error = NUMBER)
+-- MySQL Error Code (raised_error err_code = MYSQL_ERRNO)
+-- MySQL Error Message (err_msg = MESSAGE_TEXT)
+
+Information which we can retrieve are as follows
+
+NUMBER : Return Condition Area number 
+RETURNED_SQLSTATE : Return ANSI SQLSTATE code which is related to cought exception
+MESSAGE_TEXT      : Return Error Message which is related to cought exception
+MYSQL_ERRNO       : Return MySQL Error code which is related to cought exception
+
+
+Raising our own exception
+-----------------------------
+
+SIGNAL SQLSTATE sqlstate_code|condition_name [SET MESSAGE_TEXT=string_or_variable];

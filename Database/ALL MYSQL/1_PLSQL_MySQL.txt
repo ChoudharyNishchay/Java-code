@@ -1,0 +1,60 @@
+Stored Programs
+==================
+Stored Program in database is required for
+   1. Performing calculation based on given input and return the result (Functions)
+   2. Perfom series of SQL statement based on certain inputs and conditions (Procedures)
+   3. Perform additional task on execution of DML statements. (Triggers)
+   
+Why do we need programming in database
+1. To bundle several SQL statements together : Can be called by Application server and help reducing network load.
+2. Centralized business logic
+3. Hide complexity and implementation details (encapsulation)
+   
+Generic Program in any programming language will have following options / sections
+
+1. Declaration section : Commonly used to declare variables to hold the values during the execution of program.
+						 In database we use this area to declare
+						 - variables
+						 - user defined exceptions
+						 - cursors
+						 
+	Variables
+	 
+	Declaration format ==> DECLARE variable_name datatype(size) [DEFAULT default_value];
+	                eg:    DECLARE lv_ename VARCHAR(20) DEFAULT NULL;
+					       DECLARE ln_sal   INTEGER;
+						   DECLARE ln_comm,ln_deptno INTEGER DEFAULT NULL;
+					
+    Assigning values to variable 
+						   DURING declaration eg:      DECLARE ln_sal INT DEFAULT 0;
+						   During execution            SET ln_sal = 0;
+						   USING Select query          SELECT max(sal) INTO ln_sal FROM emp;
+						   
+						   Note: If using select query to fetch the data into variable we must ensure that select query must give only one row value.
+					
+	
+2. Code execution : Like any other programming language this section is going to have following
+		SQL Commands
+		Conditional Constructs
+		Loops
+                
+3. Exception Handling section : Exception is defined as run time errors which a program may encounter. We cannot always avert the run time errors
+but provide a treatment(solution), just in case it is encountered.
+
+It is an optional coding section which is used to trap run time errors hence
+
+
+MySQL Program and delimiter
+================================
+Client tools like workbench and mysql shell (command prompt) consider ';' as command terminator. Hence they start compiling and executing the command as it is encountered.
+
+However a stored program require aggregation of multiple sql statement and other program constructs together hence involve several occurences of command terminator ';'.
+
+eg: 
+delimiter //
+create procedure p1()
+begin
+select * from emp;
+
+select * from dept;
+end//

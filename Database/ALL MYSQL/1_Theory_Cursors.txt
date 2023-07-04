@@ -1,0 +1,208 @@
+CURSORS IN MySQL
+---------------------
+We may often require to fetch data into variable from select query which are providing multiple records.
+Variable in MySQL are scalar and can hold single value at a time.
+
+OR 
+
+We may often require a PL/SQL program to fetch data / result set from SELECT statment and perform 
+actions using value from each record in a looping mechanism.
+
+For eg: Following program will fail at run time as select statement is trying to fetch multiple records in scalar variable.
+
+delimiter #
+CREATE PROCEDURE testFailure()
+BEGIN
+   DECLARE v_ename VARCHAR(200);
+   
+   SELECT ename INTO v_ename FROM emp;
+   SELECT v_ename;
+END#
+
+call testFailure();
+
+Error Code: 1172. Result consisted of more than one row	0.015 sec
+
+To overcome this issue we will require to introduce cursor. For eg:
+
+delimiter #
+create procedure disp_emp(p_deptno integer)
+begin
+    declare lv_ename VARCHAR(200);
+    declare lv_empno INTEGER;
+	
+    declare notfound BOOLEAN;
+    declare cdept CURSOR FOR select empno,ename from emp where deptno=p_deptno;
+    declare continue handler for not found set notfound=true;
+    
+    open cdept;
+    select 'Cursor opened';
+    curloop : LOOP
+        fetch cdept into lv_empno,lv_ename;
+        
+        IF notfound THEN
+           leave curloop;
+		end if;
+        
+        select lv_empno,lv_ename;
+    
+    END LOOP curloop;
+end#
+
+Hence we can say that Cursor is like a pointer to a result set in memory. To play with cursor we need following steps
+1. Attach a cursor to a SELECT statement
+
+   DECLARE <cursor_name> CURSOR FOR <select query>;
+   eg:
+   
+   DECLARE c1 CURSOR FOR select ename,empno from emp;
+   
+2. Whenever required, open the cursor (which means execute the query which is attached to cursor in point 1, Prepare result set in memory as a temporary table)
+
+    OPEN <cursor_name>;
+	OPEN c1;
+	
+3. Start with fetching of record value, one row at a time from result set / temporary table, with the help of cursor.
+
+    FETCH <cursor_name> INTO <variable>;
+	FETCH c1 INTO v_ename,v_empno;    -- declaration of v_ename and v_empno is also required.
+    
+	This operation is required n number of times where n is the number for records available in result set.
+	Hence it is better to put fetch command in loop
+	
+4. Upon Fetch operation, possibility is that cursor may not able to find new record to fetch from result set.
+   It is a time when Cursor will report a run time error to signal that no data is found / no more records to fetch. This run time error will lead to failure of our program.
+   
+   Hence we need to catch this run time error to avoid termination of our program. This is done using declaring
+   and exception handler
+   
+     DECLARE CONTINUE HANDLER 
+	  FOR <Error>
+	  <action that we want to take before we continue with our execution>
+	 
+	 DELCARE CONTINUE HANDLER  -- It will instruct database to continue execution of program after executing 
+	                           -- following set command
+	 FOR no data found         -- It is a name of variable
+	 SET is_not_found = true;  -- We are just setting the value of a variable to true
+	 
+5. Add a condition to terminate the loop when there are no more records to fetch (we have already observed that if there are no more records to fetch then we are setting the value of is_not_found variable to true)
+
+     IF <cond> THEN
+	     LEAVE <loop label>;
+	 END IF;
+	 
+	 IF is_not_found THEN
+	     LEAVE curloop; -- here curloop is the lable that we may have assigned to LOOP construct
+     END IF;
+	 
+6. Release the temporary table / result set from memory
+
+    CLOSE <cusor_name>;
+	CLOSE c1;
+
+
+
+Eg: Prepare a program to process the data from emp table and move it respecitve archive tables(based on deptno)
+
+-- Introducing three tables to archive the emp data into separate table based on deptno values.
+CREATE TABLE emp10_arch LIKE emp; 
+CREATE TABLE emp20_arch LIKE emp;
+CREATE TABLE emp30_arch LIKE emp;
+
+
+DELIMITER #
+CREATE PROCEDURE arch_emp_data()
+BEGIN
+    DECLARE ln_empno,ln_deptno,ln_sal,ln_comm,ln_mgr INTEGER; -- define variable to hold the emp data
+    DECLARE lv_ename,lv_job VARCHAR(200); -- define variable to hold the emp data
+    DECLARE ld_hiredate DATE; -- define variable to hold the emp data
+    
+	DECLARE lb_notfound BOOLEAN;  
+	
+	DECLARE cemp CURSOR FOR select * from emp;  -- declaring cursor
+	DECLARE continue HANDLER FOR 1329 SET lb_notfound=TRUE;
+	-- DECLARE continue HANDLER FOR 1245,3210 ROLLBACK;
+	
+	-- DECLARE exit HANDLER FOR 1329 BEGIN rollback; select 'Terminating the program'; END;
+	
+	OPEN cemp; -- It must be outside the loop else error "cursor already open"
+	
+	cursorloop : LOOP
+	  FETCH cemp INTO ln_empno, lv_ename, lv_job, ln_mgr, ld_hiredate, ln_sal,ln_comm, ln_deptno;
+	  
+	  IF lb_notfound THEN
+	     CLOSE cemp;
+	     LEAVE cursorloop;
+	  END IF;
+	  
+	  IF ln_deptno=10 THEN
+	      INSERT INTO emp10_arch VALUES(ln_empno, lv_ename, lv_job, ln_mgr, ld_hiredate, ln_sal,ln_comm, ln_deptno);
+	  ELSEIF ln_deptno=20 THEN
+	      INSERT INTO emp20_arch VALUES(ln_empno, lv_ename, lv_job, ln_mgr, ld_hiredate, ln_sal,ln_comm, ln_deptno);
+	  ELSEIF ln_deptno=30 THEN
+		  INSERT INTO emp30_arch VALUES(ln_empno, lv_ename, lv_job, ln_mgr, ld_hiredate, ln_sal,ln_comm, ln_deptno);
+	  END IF;
+	
+	END LOOP cursorloop;
+	CLOSE cemp;
+	
+END#
+
+
+
+Note: Parameterized cursors : Attaching cursor with query where condition input is provided at run time.
+
+  DECLARE <cusor_name> CURSOR FOR select_query where cond. <comparison operator> parameter_name
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `disp_emp`(p_deptno integer)
+begin
+    declare lv_ename VARCHAR(200);
+    declare lv_empno INTEGER;
+	
+    declare notfound BOOLEAN;
+    declare cdept CURSOR FOR select empno,ename from emp where deptno=p_deptno;
+    declare continue handler for not found set notfound=true;
+    
+    open cdept;
+    select 'Cursor opened';
+    curloop : LOOP
+        fetch cdept into lv_empno,lv_ename;
+        
+        IF notfound THEN
+           leave curloop;
+		end if;
+        
+        select lv_empno,lv_ename;
+    
+    END LOOP curloop;
+end
+
+
+-- Cursor FOR LOOP : Oracle  (Interview question)
+-- Parameterized cursors for Oracle
+-- Note : This is not supported in MySQL
+CREATE DEFINER=`root`@`localhost` PROCEDURE `disp_emp`(p_deptno integer)
+begin
+	
+    declare cdept CURSOR FOR select empno,ename from emp where deptno=p_deptno;
+    
+	-- Loop will automatically open the cursor
+    FOR crec IN cdept
+	--variable cred must not be declared
+	-- fetching automatically occurs in CREC
+	-- Loop will be terminated after last fetch
+    LOOP
+        select crec;
+    END LOOP curloop;
+	-- Cursor is automatically close after loop is over
+end
+---------------------------------------------------------------
+
+-- Implicit CURSOR : Which are defined by DAtabase for SQL commands
+-- Explicit Cursors : Which we use in programming language
+
+
+
+
+
+
